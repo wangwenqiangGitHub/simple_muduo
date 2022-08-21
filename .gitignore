@@ -1,2 +1,14 @@
 build
 muduo
+lib
+.idea
+.cache
+
+/cmake-build-debug/
+/cmake-build-release/
+/linux/
+/.vs/
+/.vscode/
+/.idea/
+/release/
+/cmake-build-*
