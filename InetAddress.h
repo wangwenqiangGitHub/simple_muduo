@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <netinet/in.h>
 #include <string>
+
+#include "SocketsOps.h"
 namespace simple_muduo {
 class InetAddress
 {
@@ -23,7 +25,10 @@ public:
     std::string toIpPort() const;
     uint16_t toPort() const;
 
-    const sockaddr_in *getSockAddr() const { return &addr_; }
+	sa_family_t family() const { return addr_.sin_family; }
+    // const sockaddr_in *getSockAddr() const { return &addr_; }
+	// const struct sockaddr* getSockAddr() const { return sockets::sockaddr_cast(&addr6_); }
+	const struct sockaddr* getSockAddr() const { return sockets::sockaddr_cast(&addr_); }
     void setSockAddr(const sockaddr_in &addr) { addr_ = addr; }
 	void setSockAddrInet6(const struct sockaddr_in6& addr6) { addr6_ = addr6; }
 
