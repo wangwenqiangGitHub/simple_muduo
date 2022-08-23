@@ -73,7 +73,6 @@ void Acceptor::handleRead()
     }
     else
     {
-        LOG_ERROR("%s:%s:%d accept err:%d\n", __FILE__, __FUNCTION__, __LINE__, errno);
 		// to many open file 文件描述符过多，一般设置是1024个，ulimit -a 可以查看
         if (errno == EMFILE)
         {

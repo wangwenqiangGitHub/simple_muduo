@@ -26,7 +26,7 @@ public:
 	~Acceptor();
 
 	// TcpServer中用到了这个回调
-	void setNewConnctionCallback(const NewConnectionCallback& cb){}
+    void setNewConnectionCallback(const NewConnectionCallback &cb) { NewConnectionCallback_ = cb; }
     bool listenning() const { return listenning_; }
     void listen();
 private:
