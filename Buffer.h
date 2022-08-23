@@ -4,6 +4,7 @@
 #include <string>
 #include <sys/types.h>
 #include <vector>
+#include <assert.h>
 
 namespace simple_muduo{
 //muduo网络库底层的缓冲区类型定义
@@ -74,6 +75,15 @@ public:
         std::copy(data, data+len, beginWrite());
         writerIndex_ += len;
 	}
+
+  void prepend(const void* /*restrict*/ data, size_t len)
+  {
+    assert(len <= prependableBytes());
+    readerIndex_ -= len;
+    const char* d = static_cast<const char*>(data);
+    std::copy(d, d+len, begin()+readerIndex_);
+  }
+
 	char* beginWrite() { return begin() + writerIndex_;}
 	const char* beginWrite() const {return begin() + writerIndex_;}
 
