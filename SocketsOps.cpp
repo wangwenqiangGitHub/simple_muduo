@@ -98,7 +98,7 @@ void sockets::bindOrDie(int sockfd, const struct sockaddr* addr)
   int ret = ::bind(sockfd, addr, static_cast<socklen_t>(sizeof(struct sockaddr_in6)));
   if (ret < 0)
   {
-    // LOG_SYSFATAL << "sockets::bindOrDie";
+	  LOG_ERROR("bindOrDie\n");
   }
 }
 
@@ -107,7 +107,7 @@ void sockets::listenOrDie(int sockfd)
   int ret = ::listen(sockfd, SOMAXCONN);
   if (ret < 0)
   {
-    // LOG_SYSFATAL << "sockets::listenOrDie";
+	  LOG_ERROR("listenOrDie\n");
   }
 }
 
