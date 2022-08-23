@@ -13,6 +13,8 @@
 #include "noncopyable.h"
 #include <functional>
 namespace simple_muduo {
+// 负责客户端的发起连接任务。连接建立好之后
+// 客户端主动连接错误处理，重连
 class Connector : noncopyable
 {
 public:
@@ -27,6 +29,8 @@ public:
 	void start();  // can be called in any thread
 	void restart();  // must be called in loop thread
 	void stop();  // can be called in any thread
+
+	const InetAddress& serverAddress() const { return serverAddr_; }
 private:
   enum States { kDisconnected, kConnecting, kConnected };
 
