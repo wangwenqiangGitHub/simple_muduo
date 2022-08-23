@@ -28,7 +28,7 @@ void Socket:: bindAddress(const InetAddress& localaddr)
 {
 	if(0 != bind(sockfd_, (sockaddr*)localaddr.getSockAddr(), sizeof(sockaddr_in)))
 	{
-		LOG_ERROR("bind erro\n");
+		printf("error bind\n");
 	}
 }
 
@@ -48,14 +48,14 @@ int  Socket:: accept(InetAddress* peeraddr)
      * Reactor模型 one loop per thread
      * poller + non-blocking IO
      **/
-    sockaddr_in addr;
+    sockaddr_in6 addr;
     socklen_t len = sizeof(addr);
     ::memset(&addr, 0, sizeof(addr));
     // fixed : int connfd = ::accept(sockfd_, (sockaddr *)&addr, &len);
     int connfd = ::accept4(sockfd_, (sockaddr *)&addr, &len, SOCK_NONBLOCK | SOCK_CLOEXEC);
     if (connfd >= 0)
     {
-        peeraddr->setSockAddr(addr);
+        peeraddr->setSockAddrInet6(addr);
     }
     return connfd;
 }
