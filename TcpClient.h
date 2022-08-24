@@ -8,14 +8,23 @@
 //=====================================================================
 #ifndef SIMPLE_MUDUO_TCPCLIENT_H
 #define SIMPLE_MUDUO_TCPCLIENT_H
+#include <memory>
 #include <mutex>
 
 #include "Callbacks.h"
+#include "Connector.h"
 #include "EventLoop.h"
 #include "noncopyable.h"
 #include "TcpConnection.h"
 
 namespace simple_muduo{
+
+class Connector;
+using ConnectorPtr = std::shared_ptr<Connector>;
+// TcpClient类是用Connetor去建立连接，用TcpConnection去维护管理连接，一对一
+// TcpConnection断开连接后，Connector具备反复重连机制，因此服务端和客户端的启动顺序无先后
+// Tcp自连接问题：mudduo采用sockets::isSelfConnect(in sockfd)方法解决。
+// tcp的断开，重连处理
 class TcpClient : noncopyable
 {
 public:
@@ -44,11 +53,14 @@ private:
   EventLoop* loop_;
   const std::string name_;
 
+  ConnectorPtr connector_;
   ConnectionCallback connectionCallback_;
   MessageCallback messageCallback_;
   WriteCompleteCallback writeCompleteCallback_;
   bool retry_;
   bool connect_;
+  // always in loop thread
+  int nextConnId_;
   std::mutex mutex_;
   TcpConnectionPtr connection_;
 };
