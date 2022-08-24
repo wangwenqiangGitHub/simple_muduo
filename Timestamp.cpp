@@ -20,6 +20,13 @@ Timestamp Timestamp::now()
 	ret = ((int64_t)tv.tv_sec) * 1000 * 1000 + tv.tv_usec;
 	return Timestamp(ret);
 }
+
+// static
+Timestamp Timestamp::invalid()
+{
+    return  Timestamp();
+}
+
 std::string Timestamp::toString() const
 {
 	struct tm tm_time;

@@ -10,6 +10,8 @@
 #include "noncopyable.h"
 #include "Timestamp.h"
 #include "CurrentThread.h"
+#include "Callbacks.h"
+#include "TimerQueue.h"
 
 namespace simple_muduo{
 class Channel;
@@ -27,9 +29,17 @@ public:
 	Timestamp pollReturnTime() const {return pollRetureTime_;}
 
     // 在当前loop中执行
-    void runInLoop(Functor cb);
+    void runInLoop(const Functor& func);
     // 把上层注册的回调函数cb放入队列中 唤醒loop所在的线程执行cb
-    void queueInLoop(Functor cb);
+    void queueInLoop(const Functor& cb);
+
+	// 定时器
+    TimerId addTimer(const TimerCallback& cb, const Timestamp& when);
+    TimerId addTimer(const TimerCallback& cb, double delaySeconds, bool repeat = false);
+    void    cancelTimer(TimerId id);
+
+    bool isRunning() { return running_; }
+    void assertInLoopThread() const;
 
 	// 通过eventfd唤醒loop所在的线程
 	void wakeup();
@@ -49,7 +59,7 @@ private:
 	std::atomic_bool quit_;
 	
 	Timestamp pollRetureTime_;
-    std::unique_ptr<Poller> poller_;
+     std::unique_ptr<Poller> poller_;
 	const pid_t threadId_;
 
 int wakeupFd_;
@@ -58,8 +68,11 @@ int wakeupFd_;
 	ChanneList activeChannels_;
 
 	std::atomic_bool callingPendingFunctors_;
+	std::atomic_bool running_;
+
 	std::vector<Functor> pendingFunctors_;
 	std::mutex mutex_;
+    TimerQueue               *timerQueue_;
 };
 }
 

@@ -2,20 +2,24 @@
 #include <mutex>
 #include <sys/eventfd.h>
 #include <unistd.h>
+#include <assert.h>
 
 #include "CurrentThread.h"
 #include "Logger.h"
 #include "EventLoop.h"
 #include "Channel.h"
 #include "Poller.h"
+#include "Timestamp.h"
 
 using namespace simple_muduo;
+namespace{
 
 // 防止一个线程创建多个EventLoop
 __thread EventLoop* t_loopInThisThread = nullptr;
 
 // 定义默认的Poller IO复用接口的超时时间
 const int kPollTimeMs = 10000;
+
 
 // 创建线程之后主线程和子线程谁先运行是不确定的。
 // 通过一个eventfd在线程之间传递数据的好处是多个线程无需上锁就可以实现同步
@@ -43,9 +47,10 @@ int createEventfd()
 	}
 	return efd;
 }
+}
 
 EventLoop::EventLoop()
-	:looping_(false)
+	 : looping_(false)
 	 , quit_(false)
 	 , poller_(Poller::newDefaultPoller(this))
 	 , threadId_(CurrentThread::tid())
@@ -63,6 +68,8 @@ EventLoop::EventLoop()
     }
 	wakeupChannel_->setReadCallback(
 			std::bind(&EventLoop::handleRead, this));
+	wakeupChannel_->enableReading();
+	timerQueue_ = new TimerQueue(this);
 }
 
 EventLoop::~EventLoop()
@@ -79,21 +86,44 @@ void EventLoop::loop()
 {
 	looping_ = true;
 	quit_ = false;
+	Timestamp now;
 	while(!quit_)
 	{
 		activeChannels_.clear();
-		pollRetureTime_ = poller_->poll(kPollTimeMs, & activeChannels_);
+
+		int timeoutMs = 0;
+		Timestamp nextExpired = timerQueue_->getNearestExpiration();
+		if(nextExpired.valid())
+		{
+			now = Timestamp::now();
+			double seconds = Timestamp::timeDiff(nextExpired, now);
+			if(seconds <= 0)
+			{
+				timeoutMs = 0;
+			}
+			else
+			{
+				timeoutMs = seconds * 1000;
+			}
+		}
+		else
+		{
+			timeoutMs = 0;
+		}
+
+		pollRetureTime_ = poller_->poll(timeoutMs, & activeChannels_);
 		for(Channel* channel : activeChannels_)
 		{
 			// Poller监听哪些channel发生了事件 然后上报给EventLoop
 			// 通知channel处理相应的事件
-			channel->handleEvent(pollRetureTime_);
-         // 执行当前EventLoop事件循环需要处理的回调操作 对于线程数 >=2 的情况 IO线程 mainloop(mainReactor) 主要工作：
-         // ccept接收连接 => 将accept返回的connfd打包为Channel => TcpServer::newConnection通过轮询将TcpConnection对象分配给subloop处理
-         //  mainloop调用queueInLoop将回调加入subloop（该回调需要subloop执行 但subloop还在poller_->poll处阻塞） 
-		 //  queueInLoop通过wakeup将subloop唤醒
-        doPendingFunctors();
+			channel->handleEvent(now);
+			// 执行当前EventLoop事件循环需要处理的回调操作 对于线程数 >=2 的情况 IO线程 mainloop(mainReactor) 主要工作：
+			// ccept接收连接 => 将accept返回的connfd打包为Channel => TcpServer::newConnection通过轮询将TcpConnection对象分配给subloop处理
+			//  mainloop调用queueInLoop将回调加入subloop（该回调需要subloop执行 但subloop还在poller_->poll处阻塞） 
+			//  queueInLoop通过wakeup将subloop唤醒
 		}
+		timerQueue_->runTimer(now);
+		doPendingFunctors();
 	}
 	LOG_INFO("EventLoop stop loop\n");
 	looping_ = false;
@@ -113,23 +143,28 @@ void EventLoop::quit()
     }
 }
 // 将回调函数在本loop中执行
-void EventLoop::runInLoop(Functor cb)
+void EventLoop::runInLoop(const Functor& cb)
 {
+	printf("<%s %d>\n",__func__, __LINE__);
 	if(isInLoopThread())
 	{
+	printf("<%s %d>\n",__func__, __LINE__);
 		cb();
 	}
-	else{
+	else
+	{
+	printf("<%s %d>\n",__func__, __LINE__);
 		queueInLoop(cb);
 	}
 }
 
 // 将回调函数放入队列 在所在loop 线程中执行回调
-void EventLoop::queueInLoop(Functor cb)
+void EventLoop::queueInLoop(const Functor& cb)
 {
 	// 减小锁的临界区
 	{
-		std::unique_lock<std::mutex> lock(mutex_);
+	//不能使用unique_lock<std::mutex>
+		std::unique_lock<std::mutex> lock(mutex_, std::defer_lock);
 		pendingFunctors_.emplace_back(cb);
 	}
 	// callingPendingFunctors_的意思是 当前loop正在执行回调中 但是loop的pendingFunctors_中又加入了新的回调 需要通过wakeup写事件
@@ -148,6 +183,33 @@ void EventLoop::handleRead()
     if (n != sizeof(one))
     {
         LOG_ERROR("EventLoop::handleRead() reads %lu bytes instead of 8\n", n);
+    }
+}
+
+TimerId EventLoop::addTimer(const TimerCallback& cb, const Timestamp& when)
+{
+    return timerQueue_->addTimer(cb, when, 0);
+}
+
+TimerId EventLoop::addTimer(const TimerCallback& cb, double delaySeconds, bool repeat/* = false*/)
+{
+    Timestamp when(Timestamp::now());
+    when += delaySeconds;
+    return timerQueue_->addTimer(cb, when, repeat ? delaySeconds : 0);
+}
+
+void EventLoop::cancelTimer(TimerId id)
+{
+     timerQueue_->cancelTimer(id);
+}
+
+void EventLoop::assertInLoopThread() const 
+{
+    if(!isInLoopThread())
+    {
+		LOG_INFO("EventLoop::abortNotInLoopThread - EventLoop [] was created in threadId_ [%d], " 
+            "but current thread id = [%d]\n",CurrentThread::tid(),threadId_);
+        assert("EventLoop::assertInLoopThread()" && 0);
     }
 }
 
