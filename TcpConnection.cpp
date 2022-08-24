@@ -55,8 +55,7 @@ void TcpConnection::send(const std::string &buf)
 {
 	if(state_ == kConnected)
 	{
-		if(state_ == kConnected)
-		{
+	
 			// 这种是对于单个reactor的情况 
 			// 用户调用conn->send时 loop_即为当前线程
 			if(loop_->isInLoopThread())
@@ -67,7 +66,6 @@ void TcpConnection::send(const std::string &buf)
 			{
 				loop_->runInLoop(std::bind(&TcpConnection::sendInLoop,this, buf.c_str(), buf.size()));
 			}
-		}
 	}
 }
 
@@ -150,13 +148,31 @@ void TcpConnection::shutdownInLoop()
 	}
 }
 
+void TcpConnection::forceClose()
+{
+  // FIXME: use compare and swap
+  if (state_ == kConnected || state_ == kDisconnecting)
+  {
+    setState(kDisconnecting);
+    loop_->queueInLoop(std::bind(&TcpConnection::forceCloseInLoop, shared_from_this()));
+  }
+}
+
+void TcpConnection::forceCloseInLoop()
+{
+  // loop_->assertInLoopThread();
+  if (state_ == kConnected || state_ == kDisconnecting)
+  {
+    // as if we received 0 byte in handleRead();
+    handleClose();
+  }
+}
 // 连接建立
 void TcpConnection::connectEstablished()
 {
-	setState(kConnected);
-	channel_->tie(shared_from_this());
-	// 向poller注册channel的EPOLLIN读事件
-	channel_->enableWriting();
+    setState(kConnected);
+    channel_->tie(shared_from_this());
+    channel_->enableReading(); // 向poller注册channel的EPOLLIN读事件
 
 	// 新连接建立 执行回调
 	connectionCallback_(shared_from_this());

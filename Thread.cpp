@@ -14,6 +14,7 @@
 #include <semaphore.h>
 using namespace simple_muduo;
 
+std::atomic_int Thread::numCreated_(0);
 Thread::Thread(ThreadFunc func, const std::string name)
 	: started_(false)
 	, joined_(false)

@@ -66,9 +66,9 @@ void EPollPoller::updateChannel(Channel *channel)
 
     if (index == kNew || index == kDeleted)
     {
+		int fd = channel->fd();
         if (index == kNew)
         {
-            int fd = channel->fd();
             channels_[fd] = channel;
         }
         else // index == kAdd

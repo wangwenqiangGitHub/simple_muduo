@@ -13,6 +13,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <string>
 #include <unordered_map>
 
 #include "Acceptor.h"
@@ -46,8 +47,15 @@ public:
     // 设置底层subloop的个数
     void setThreadNum(int numThreads);
 
+	std::shared_ptr<EventLoopThreadPool> threadPool()
+	{return threadPool_;}
+
     // 开启服务器监听
     void start();
+
+	const std::string& ipPort() const {return ipPort_;}
+	const std::string& name() const {return name_;}
+	EventLoop* getLoop() const { return loop_; }
 private:
     void newConnection(int sockfd, const InetAddress &peerAddr);
     void removeConnection(const TcpConnectionPtr &conn);

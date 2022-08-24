@@ -60,6 +60,8 @@ public:
 	void connectEstablished();
 	// 连接销毁
 	void connectDestroyed();
+
+	void forceClose();
 private:
 	enum StateE
 	{
@@ -76,6 +78,7 @@ private:
 	void handleError();
 	void sendInLoop(const void* data, size_t len);
 	void shutdownInLoop();
+	void forceCloseInLoop();
 private:
 	// 这里是baseloop还是subloop由TcpServer中创建的线程数决定 若为多Reactor 该loop_指向subloop 若为单Reactor 该loop_指向baseloop
     EventLoop *loop_; 
