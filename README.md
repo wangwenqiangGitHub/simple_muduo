@@ -11,3 +11,15 @@ original author github: https://github.com/chenshuo/muduo
 
 # utl
 - TODO:fileUtil
+
+# IO多路复用(example/IO)
+- select
+	- 1. bitmap fd默认大小最大为1024
+	- 2.fd\_set每次都会被修改，不可重用，每次都需要清零，设置fd\_set;
+	- 3. fd\_set每次都会有用户态到内核态的开销。
+	- 4. 查询所有的fd，复杂度为o(n)。
+- poll
+	- 解决了select中的1，2这两个个问题
+- epool
+	- 解决了1.2.4问题，对3做了优化吧
+
