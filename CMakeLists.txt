@@ -1,41 +1,117 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 2.6)
 
-project(simple_muduo)
+project(muduo C CXX)
 
-include_directories(
-	${CMAKE_CURRENT_SOURCE_DIR}
-)
-# set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
+enable_testing()
 
-set(CMAKE_CXX_FLAGS "-std=c++11 -g")
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(COMPILE_OPTIONS_DEFAULT
-    "-fPIC"
-    "-Wall;-Wextra"
-    "-Wno-unused-function;-Wno-unused-parameter;-Wno-unused-variable"
-	"-Wno-error=extra;-Wno-error=missing-field-initializers;-Wno-error=type-limits")
-if(ENABLE_MEM_DEBUG)
-  list(APPEND COMPILE_OPTIONS_DEFAULT
-    "-Wl,-wrap,free;-Wl,-wrap,malloc;-Wl,-wrap,realloc;-Wl,-wrap,calloc")
-  update_cached_list(MK_COMPILE_DEFINITIONS ENABLE_MEM_DEBUG)
-  message(STATUS "已启用内存调试功能")
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release")
 endif()
 
-if(ENABLE_ASAN)
-  list(APPEND COMPILE_OPTIONS_DEFAULT
-    "-fsanitize=address;-fno-omit-frame-pointer")
-  message(STATUS "已启用 Address Sanitize")
+# only build examples if this is the main project
+if(CMAKE_PROJECT_NAME STREQUAL "muduo")
+  option(MUDUO_BUILD_EXAMPLES "Build Muduo examples" ON)
 endif()
 
-aux_source_directory(. SRC_LIST)
-add_library(${PROJECT_NAME} SHARED ${SRC_LIST})
+set(CXX_FLAGS
+ -g
+ # -DVALGRIND
+ -DCHECK_PTHREAD_RETURN_VALUE
+ -D_FILE_OFFSET_BITS=64
+ -Wall
+ -Wextra
+ -Werror
+ -Wconversion
+ -Wno-unused-parameter
+ -Wold-style-cast
+ -Woverloaded-virtual
+ -Wpointer-arith
+ -Wshadow
+ -Wwrite-strings
+ -march=native
+ # -MMD
+ -std=c++11
+ -rdynamic
+ )
+if(CMAKE_BUILD_BITS EQUAL 32)
+  list(APPEND CXX_FLAGS "-m32")
+endif()
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  list(APPEND CXX_FLAGS "-Wno-null-dereference")
+  list(APPEND CXX_FLAGS "-Wno-sign-conversion")
+  list(APPEND CXX_FLAGS "-Wno-unused-local-typedef")
+  list(APPEND CXX_FLAGS "-Wthread-safety")
+  list(REMOVE_ITEM CXX_FLAGS "-rdynamic")
+endif()
+string(REPLACE ";" " " CMAKE_CXX_FLAGS "${CXX_FLAGS}")
 
-add_executable(testTcpServer ./examples/testTcpServer.cpp)
-target_link_libraries(testTcpServer ${PROJECT_NAME})
+set(CMAKE_CXX_FLAGS_DEBUG "-O0")
+set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
-add_executable(testTcpClient ./examples/testTcpClient.cpp)
-target_link_libraries(testTcpClient ${PROJECT_NAME})
+find_package(Boost REQUIRED)
+find_package(Protobuf)
+find_package(CURL)
+find_package(ZLIB)
+find_path(CARES_INCLUDE_DIR ares.h)
+find_library(CARES_LIBRARY NAMES cares)
+find_path(MHD_INCLUDE_DIR microhttpd.h)
+find_library(MHD_LIBRARY NAMES microhttpd)
+find_library(BOOSTTEST_LIBRARY NAMES boost_unit_test_framework)
+find_library(BOOSTPO_LIBRARY NAMES boost_program_options)
+find_library(BOOSTSYSTEM_LIBRARY NAMES boost_system)
+find_path(TCMALLOC_INCLUDE_DIR gperftools/heap-profiler.h)
+find_library(TCMALLOC_LIBRARY NAMES tcmalloc_and_profiler)
+find_path(HIREDIS_INCLUDE_DIR hiredis/hiredis.h)
+find_library(HIREDIS_LIBRARY NAMES hiredis)
+find_path(GD_INCLUDE_DIR gd.h)
+find_library(GD_LIBRARY NAMES gd)
+find_program(THRIFT_COMPILER thrift)
+find_path(THRIFT_INCLUDE_DIR thrift)
+find_library(THRIFT_LIBRARY NAMES thrift)
 
-add_executable(testTimer ./examples/testTimer.cpp)
-target_link_libraries(testTimer ${PROJECT_NAME})
-target_compile_options(testTimer PRIVATE ${COMPILE_OPTIONS_DEFAULT})
+if(CARES_INCLUDE_DIR AND CARES_LIBRARY)
+  message(STATUS "found cares")
+endif()
+if(CURL_FOUND)
+  message(STATUS "found curl")
+endif()
+if(PROTOBUF_FOUND)
+  message(STATUS "found protobuf")
+endif()
+if(TCMALLOC_INCLUDE_DIR AND TCMALLOC_LIBRARY)
+  message(STATUS "found tcmalloc")
+endif()
+if(ZLIB_FOUND)
+  message(STATUS "found zlib")
+endif()
+if(HIREDIS_INCLUDE_DIR AND HIREDIS_LIBRARY)
+  message(STATUS "found hiredis")
+endif()
+if(GD_INCLUDE_DIR AND GD_LIBRARY)
+  message(STATUS "found gd")
+endif()
+if(THRIFT_COMPILER AND THRIFT_INCLUDE_DIR AND THRIFT_LIBRARY)
+  message(STATUS "found thrift")
+endif()
+
+include_directories(${Boost_INCLUDE_DIRS})
+
+include_directories(${PROJECT_SOURCE_DIR})
+
+string(TOUPPER ${CMAKE_BUILD_TYPE} BUILD_TYPE)
+message(STATUS "CXX_FLAGS = " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_${BUILD_TYPE}})
+
+add_subdirectory(muduo/base)
+# add_subdirectory(muduo/net)
+
+#if(MUDUO_BUILD_EXAMPLES)
+#  add_subdirectory(contrib)
+#  add_subdirectory(examples)
+#else()
+#  if(CARES_INCLUDE_DIR AND CARES_LIBRARY)
+#    add_subdirectory(examples/cdns)
+#  endif()
+#endif()
+
