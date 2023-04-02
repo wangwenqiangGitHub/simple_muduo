@@ -1,0 +1,18 @@
+add_executable(asio_chat_client client.cc)
+target_link_libraries(asio_chat_client simple_muduo)
+
+add_executable(asio_chat_loadtest loadtest.cc)
+target_link_libraries(asio_chat_loadtest simple_muduo)
+
+add_executable(asio_chat_server server.cc)
+target_link_libraries(asio_chat_server simple_muduo)
+
+add_executable(asio_chat_server_threaded server_threaded.cc)
+target_link_libraries(asio_chat_server_threaded simple_muduo)
+
+add_executable(asio_chat_server_threaded_efficient server_threaded_efficient.cc)
+target_link_libraries(asio_chat_server_threaded_efficient simple_muduo)
+
+add_executable(asio_chat_server_threaded_highperformance server_threaded_highperformance.cc)
+target_link_libraries(asio_chat_server_threaded_highperformance simple_muduo)
+
