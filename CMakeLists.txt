@@ -115,3 +115,4 @@ add_subdirectory(muduo/base)
 #  endif()
 #endif()
 
+add_subdirectory(test)
